@@ -20,7 +20,6 @@ PongMode::PongMode() {
 	{ //vertex buffer:
 		glGenBuffers(1, &vertex_buffer);
 		//for now, buffer will be un-filled.
-
 		GL_ERRORS(); //PARANOIA: print out any OpenGL errors that may have happened
 	}
 
@@ -125,9 +124,9 @@ bool PongMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			(evt.motion.x + 0.5f) / window_size.x * 2.0f - 1.0f,
 			(evt.motion.y + 0.5f) / window_size.y *-2.0f + 1.0f
 		);
+//		left_paddle.x = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).x;
 		left_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
 	}
-
 	return false;
 }
 
@@ -267,6 +266,7 @@ void PongMode::draw(glm::uvec2 const &drawable_size) {
 	const float wall_radius = 0.05f;
 	const float shadow_offset = 0.07f;
 	const float padding = 0.14f; //padding between outside of walls and edge of window
+//	const float centralBall = 0.40f;
 
 	//---- compute vertices to draw ----
 

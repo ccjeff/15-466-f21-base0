@@ -27,7 +27,6 @@ int main(int argc, char **argv) {
 #endif
 
 	//------------  initialization ------------
-
 	//Initialize SDL library:
 	SDL_Init(SDL_INIT_VIDEO);
 
@@ -47,7 +46,7 @@ int main(int argc, char **argv) {
 
 	//create window:
 	SDL_Window *window = SDL_CreateWindow(
-		"gp21 pong", //TODO: remember to set a title for your game!
+		"To Pong Or Not to Pong",
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		640, 480, //TODO: modify window size if you'd like
 		SDL_WINDOW_OPENGL
@@ -87,7 +86,9 @@ int main(int argc, char **argv) {
 	//SDL_ShowCursor(SDL_DISABLE);
 
 	//------------ create game mode + make current --------------
-	Mode::set_current(std::make_shared< PongMode >());
+	// TODO: change the initial stage to a place to choose modes
+	// Mode::set_current(std::make_shared< selectionMode >(), window);
+	Mode::set_current(std::make_shared< PongMode >(), window);
 
 	//------------ main loop ------------
 
@@ -114,6 +115,7 @@ int main(int argc, char **argv) {
 		{ //(1) process any events that are pending
 			static SDL_Event evt;
 			while (SDL_PollEvent(&evt) == 1) {
+			    //returns 1 if there is an event pending, 0 otherwise.
 				//handle resizing:
 				if (evt.type == SDL_WINDOWEVENT && evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
 					on_resize();
@@ -122,7 +124,8 @@ int main(int argc, char **argv) {
 				if (Mode::current && Mode::current->handle_event(evt, window_size)) {
 					// mode handled it; great
 				} else if (evt.type == SDL_QUIT) {
-					Mode::set_current(nullptr);
+				    // TODO: change to a more graceful exit
+					Mode::set_current(nullptr, window);
 					break;
 				} else if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_PRINTSCREEN) {
 					// --- screenshot key ---
