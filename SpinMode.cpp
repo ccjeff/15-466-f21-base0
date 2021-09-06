@@ -10,6 +10,7 @@
 //for glm::value_ptr() :
 #include <glm/gtc/type_ptr.hpp>
 
+#include <cmath>
 #include <random>
 
 SpinMode::SpinMode() {
@@ -97,6 +98,17 @@ SpinMode::SpinMode() {
 
         GL_ERRORS(); //PARANOIA: print out any OpenGL errors that may have happened
     }
+    // when init set the left & right position for both paddles
+    left_paddle = std::make_shared<Paddle> ();
+    right_paddle = std::make_shared<Paddle> ();
+    this->left_paddle->position = glm::vec2(-court_radius.x + 0.5f, 0.0f);
+    this->right_paddle->position = glm::vec2(court_radius.x - 0.5f, 0.0f);
+
+    // Also create the ball objects. At init only two balls
+    // the ball should be colliding with the paddle. This is used as a criteria to determine the
+    // next ball to be pushed. WARNING: DO NOT CHANGE 0.8
+    this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f));
+    this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f));
 }
 
 SpinMode::~SpinMode() {
@@ -114,8 +126,19 @@ SpinMode::~SpinMode() {
 bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size) {
     // use mouse to change the angle && shoot
     // press key to change the force bar
-    glm::vec2 clip_mouse();
+    glm::vec2 clip_mouse;
     switch (evt.type) {
+        case SDL_KEYDOWN:
+            break;
+        case SDL_KEYUP:
+            if (evt.key.keysym.sym == SDLK_UP) {
+                if (moving_left_paddle) left_force = std::min(++left_force, 10);
+                else right_force = std::min(++right_force, 10);
+            } else if (evt.key.keysym.sym == SDLK_DOWN) {
+                if (moving_left_paddle) left_force = std::max(--left_force, 0);
+                else right_force = std::max(--right_force, 0);
+            }
+            break;
         case SDL_MOUSEMOTION:
             //convert mouse from window pixels (top-left origin, +y is down) to clip space ([-1,1]x[-1,1], +y is up):
             clip_mouse = glm::vec2(
@@ -124,9 +147,9 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
             );
 //		left_paddle.x = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).x;
             if (moving_left_paddle) {
-                left_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
+                left_paddle->mouse_pos = clip_to_court * glm::vec3(clip_mouse, 1.0f);
             } else
-                right_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
+                right_paddle->mouse_pos = clip_to_court * glm::vec3(clip_mouse, 1.0f);
             // todo: return true?
             break;
         case SDL_MOUSEBUTTONDOWN:
@@ -138,7 +161,8 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
             );
 
             if (evt.button.button == SDL_BUTTON_LEFT) {
-                paddle.handle_click(
+                auto paddle = moving_left_paddle ? left_paddle : right_paddle;
+                paddle->handle_click(
                         (clip_to_court * glm::vec3(clip_mouse, 1.0f)),
                         evt.type == SDL_MOUSEBUTTONDOWN
                 );
@@ -152,8 +176,26 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
 
 void SpinMode::update(float elapsed) {
     static std::mt19937 mt; //mersenne twister pseudo-random number generator
-    // TODO: game AI push the ball on paddle when reach a new available slot. Shoot with random delay
-    // TODO: iterate through the balls, track the balls that is not on paddle and not on target
+    /*
+     * Game update logic: search for ball with non-zero velocity. Move the ball
+     * */
+    int closest_ball_idx = 0;
+    float closest_distance = 0.0f;
+    // calculate score, do minor change to the color of the closest ball
+
+    for (int i = 0; i < balls.size(); ++i) {
+        Ball* b = balls[i];
+        b->update(elapsed);
+        float distance = std::sqrt(std::pow(b->position.x, 2) + std::pow(b->position.y, 2));
+        if (closest_distance > distance) {
+            closest_ball_idx = i;
+            closest_ball_idx = distance;
+        }
+    }
+
+    // TODO: update cloest ball color
+
+
 
 
 }
@@ -207,7 +249,6 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
         vertices.emplace_back(glm::vec3(p2, 0.0f), center_color, glm::vec2(0.0f, 0.0f));
         vertices.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), center_color, glm::vec2(0.0f, 0.0f));
     };
-
 
     // draw the outer circle
     glm::vec2 last_pos;
@@ -268,20 +309,24 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
     draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius), glm::vec2(court_radius.x, wall_radius), fg_color);
 
     //paddles:
-    draw_rectangle(left_paddle, paddle_radius, fg_color);
-    draw_rectangle(right_paddle, paddle_radius, fg_color);
-//    left_paddle.draw(vertices);
-//    right_paddle.draw(vertices);
+//    draw_rectangle(left_paddle, paddle_radius, fg_color);
+//    draw_rectangle(right_paddle, paddle_radius, fg_color);
+    left_paddle->draw(vertices);
+    right_paddle->draw(vertices);
+
+    //initially there should be two balls sitting on paddles.
 
     //ball:
 //    draw_rectangle(ball, ball_radius, fg_color);
-
+    for (Ball* b : balls) {
+        b->draw(vertices);
+    }
     //force bar, changed by key:
     glm::vec2 score_radius = glm::vec2(0.1f, 0.1f);
     for (uint32_t i = 0; i < left_force; ++i) {
         draw_rectangle(glm::vec2( -court_radius.x + (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
     }
-    for (uint32_t i = 0; i < left_force; ++i) {
+    for (uint32_t i = 0; i < right_force; ++i) {
         draw_rectangle(glm::vec2( court_radius.x - (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
     }
 

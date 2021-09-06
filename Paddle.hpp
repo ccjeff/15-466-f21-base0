@@ -9,7 +9,7 @@
 #include <vector>
 #include "Vertex.hpp"
 #include "Ball.hpp"
-
+//#include "SpinMode.hpp"
 // reference from https://github.com/ericeschnei/15-466-f20-base0/blob/HEAD/Paddle.hpp
 // referenced for structure, used with modification
 
@@ -31,7 +31,7 @@ struct Paddle {
     const float       mass                = 0.5f;
     const float       linear_friction     = 5.0f;
     const float       angular_friction    = 1.75f;
-    const glm::vec2   paddle_radius       = glm::vec2(1.0f, 0.2f);
+    const glm::vec2   paddle_radius       = glm::vec2(0.2f, 1.0f);
     const float       moment_of_inertia   = 0.4f;
     // force of sling, in N/m (or equivalent)
     const float       sling_strength = 1.0f;
@@ -44,6 +44,7 @@ struct Paddle {
     bool        sling_held          = false;
 
     glm::vec2   mouse_pos;
+    // paddle identifier, left paddle will move first
 
     glm::vec2   position            = glm::vec2(0.0f, 0.0f);
     glm::vec2   linear_velocity     = glm::vec2(0.0f, 0.0f);

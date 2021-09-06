@@ -21,7 +21,7 @@ struct Ball {
     glm::vec2 position;
     float speed;
     #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
-    const glm::u8vec4 color = HEX_TO_U8VEC4(0xf2d2b6ff);
+    glm::u8vec4 color = HEX_TO_U8VEC4(0xf2d2b6ff);
     #undef HEX_TO_U8VEC4
     const float radius = 0.25f;
 };

@@ -34,25 +34,22 @@ struct SpinMode : Mode {
     glm::vec2 paddle_radius = glm::vec2(0.2f, 1.0f);
     glm::vec2 ball_radius = glm::vec2(0.2f, 0.2f);
 
-    // exist with mode, player controls the left paddle (cannot move paddle)
-//    glm::vec2 left_paddle = glm::vec2(-court_radius.x + 0.5f, 0.0f);
-//    glm::vec2 right_paddle = glm::vec2( court_radius.x - 0.5f, 0.0f);
 
     float center_radius = 1.0f;
     float inner_radius = 0.75f;
 //    float rotateSpeed = 1.0f;
 //    const float speedIncrement = 0.02f; // amount to increase speed over time
 
-    uint32_t left_force = 10;
-    uint32_t right_force = 10;
+    int left_force = 5;
+    int right_force = 5;
 
 //    float ai_offset = 0.0f;
 //    float ai_offset_update = 0.0f;
 
-    std::vector<Ball *> balls;
+    std::vector<Ball *> balls; // init will be 2 balls on the paddles
     bool moving_left_paddle = true;
-    Paddle left_paddle;
-    Paddle right_paddle;
+    std::shared_ptr<Paddle> left_paddle;
+    std::shared_ptr<Paddle> right_paddle;
     // --- opengl assets / helpers
     //Shader program that draws transformed, vertices tinted with vertex colors:
     ColorTextureProgram color_texture_program;

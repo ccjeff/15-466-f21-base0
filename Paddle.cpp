@@ -7,7 +7,7 @@
 
 #include "Paddle.hpp"
 
-Paddle::Paddle() {};
+Paddle::Paddle() {}
 Paddle::~Paddle() {};
 
 bool Paddle::is_colliding(Ball &ball) {
@@ -33,7 +33,7 @@ bool Paddle::is_colliding(Ball &ball) {
 }
 
 void Paddle::handle_click(glm::vec2 pos, bool down) {
-
+    // give the ball on paddle a init speed w.r.t force & set angle
     // double press, no release--
     // just pretend the last press didn't exist
     glm::vec2 pos_paddle = this->clip_to_paddle * glm::vec3(pos, 1);
@@ -70,6 +70,28 @@ void Paddle::handle_click(glm::vec2 pos, bool down) {
 }
 
 void Paddle::draw(std::vector<Vertex> &vertices) {
+    #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
+//    const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0x193b59ff);
+    const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0xf2d2b6ff);
+//    const glm::u8vec4 shadow_color = HEX_TO_U8VEC4(0xf2ad94ff);
+    const std::vector< glm::u8vec4 > trail_colors = {
+            HEX_TO_U8VEC4(0xf2ad9488),
+            HEX_TO_U8VEC4(0xf2897288),
+            HEX_TO_U8VEC4(0xbacac088),
+    };
+    #undef HEX_TO_U8VEC4
+    auto draw_rectangle = [&vertices](glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color) {
+        //draw rectangle as two CCW-oriented triangles:
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+    };
+
+    draw_rectangle(this->position , paddle_radius, fg_color);
 
     // rotate and move paddle into place
     glm::mat3x2 paddle_to_clip = this->paddle_to_clip;
