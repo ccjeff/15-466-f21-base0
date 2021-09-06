@@ -3,7 +3,7 @@
 
 //The 'PongMode' mode plays the game:
 #include "PongMode.hpp"
-
+#include "SpinMode.hpp"
 //GL.hpp will include a non-namespace-polluting set of opengl prototypes:
 #include "GL.hpp"
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
 	//create window:
 	SDL_Window *window = SDL_CreateWindow(
-		"To Pong Or Not to Pong",
+		"Curling Balls",
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		640, 480, //TODO: modify window size if you'd like
 		SDL_WINDOW_OPENGL
@@ -86,9 +86,8 @@ int main(int argc, char **argv) {
 	//SDL_ShowCursor(SDL_DISABLE);
 
 	//------------ create game mode + make current --------------
-	// TODO: change the initial stage to a place to choose modes
-	// Mode::set_current(std::make_shared< selectionMode >(), window);
-	Mode::set_current(std::make_shared< PongMode >(), window);
+	Mode::set_current(std::make_shared< SpinMode >(), window);
+//	Mode::set_current(std::make_shared< PongMode >(), window);
 
 	//------------ main loop ------------
 
@@ -161,7 +160,7 @@ int main(int argc, char **argv) {
 		}
 
 		{ //(3) call the current mode's "draw" function to produce output:
-		
+
 			Mode::current->draw(drawable_size);
 		}
 

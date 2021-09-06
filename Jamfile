@@ -115,6 +115,9 @@ if $(OS) = NT { #Windows
 #Store the names of all the .cpp files to build into a variable:
 GAME_NAMES =
 	PongMode
+	SpinMode
+	Ball
+	Paddle
 	main
 	load_save_png
 	gl_compile_program

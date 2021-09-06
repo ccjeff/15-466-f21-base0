@@ -9,9 +9,10 @@
 
 #include "Mode.hpp"
 #include "GL.hpp"
-#include "Paddle.hpp"
+//#include "Paddle.hpp"
 #include "Vertex.hpp"
 #include "Ball.hpp"
+#include "Paddle.hpp"
 
 #include <glm/glm.hpp>
 
@@ -19,7 +20,7 @@
 #include <deque>
 
 
-class SpinMode : Mode {
+struct SpinMode : Mode {
     SpinMode();
     virtual ~SpinMode();
 
@@ -34,20 +35,24 @@ class SpinMode : Mode {
     glm::vec2 ball_radius = glm::vec2(0.2f, 0.2f);
 
     // exist with mode, player controls the left paddle (cannot move paddle)
-    glm::vec2 left_paddle = glm::vec2(-court_radius.x + 0.5f, 0.0f);
-    glm::vec2 right_paddle = glm::vec2( court_radius.x - 0.5f, 0.0f);
+//    glm::vec2 left_paddle = glm::vec2(-court_radius.x + 0.5f, 0.0f);
+//    glm::vec2 right_paddle = glm::vec2( court_radius.x - 0.5f, 0.0f);
 
-    float rotateSpeed = 1.0f;
-    const float speedIncrement = 0.02f; // amount to increase speed over time
+    float center_radius = 1.0f;
+    float inner_radius = 0.75f;
+//    float rotateSpeed = 1.0f;
+//    const float speedIncrement = 0.02f; // amount to increase speed over time
 
-    uint32_t left_score = 0;
-    uint32_t right_score = 0;
+    uint32_t left_force = 10;
+    uint32_t right_force = 10;
 
-    float ai_offset = 0.0f;
-    float ai_offset_update = 0.0f;
+//    float ai_offset = 0.0f;
+//    float ai_offset_update = 0.0f;
 
     std::vector<Ball *> balls;
-
+    bool moving_left_paddle = true;
+    Paddle left_paddle;
+    Paddle right_paddle;
     // --- opengl assets / helpers
     //Shader program that draws transformed, vertices tinted with vertex colors:
     ColorTextureProgram color_texture_program;
@@ -65,8 +70,6 @@ class SpinMode : Mode {
     glm::mat3x2 clip_to_court = glm::mat3x2(1.0f);
     // computed in draw() as the inverse of OBJECT_TO_CLIP
     // (stored here so that the mouse handling code can use it to position the paddle)
-
 };
-
 
 #endif //INC_15_466_F21_BASE0_SPINMODE_HPP

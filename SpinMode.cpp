@@ -3,6 +3,7 @@
 //
 
 #include "SpinMode.hpp"
+#include "Mode.hpp"
 //for the GL_ERRORS() macro:
 #include "gl_errors.hpp"
 
@@ -110,9 +111,265 @@ SpinMode::~SpinMode() {
     white_tex = 0;
 }
 
-bool SpinMode::handle_event(const SDL_Event &, const glm::uvec2 &window_size) {
+bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size) {
+    // use mouse to change the angle && shoot
+    // press key to change the force bar
+    glm::vec2 clip_mouse();
     switch (evt.type) {
+        case SDL_MOUSEMOTION:
+            //convert mouse from window pixels (top-left origin, +y is down) to clip space ([-1,1]x[-1,1], +y is up):
+            clip_mouse = glm::vec2(
+                    (evt.motion.x + 0.5f) / window_size.x * 2.0f - 1.0f,
+                    (evt.motion.y + 0.5f) / window_size.y *-2.0f + 1.0f
+            );
+//		left_paddle.x = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).x;
+            if (moving_left_paddle) {
+                left_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
+            } else
+                right_paddle.y = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).y;
+            // todo: return true?
+            break;
+        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONUP:
+            // TODO: should push the ball away from paddle with a speed
+            clip_mouse = glm::vec2(
+                    (evt.button.x + 0.5f) / window_size.x * 2.0f - 1.0f,
+                    (evt.button.y + 0.5f) / window_size.y *-2.0f + 1.0f
+            );
 
+            if (evt.button.button == SDL_BUTTON_LEFT) {
+                paddle.handle_click(
+                        (clip_to_court * glm::vec3(clip_mouse, 1.0f)),
+                        evt.type == SDL_MOUSEBUTTONDOWN
+                );
+                return true;
+            }
+
+            break;
     }
+    return false;
 }
 
+void SpinMode::update(float elapsed) {
+    static std::mt19937 mt; //mersenne twister pseudo-random number generator
+    // TODO: game AI push the ball on paddle when reach a new available slot. Shoot with random delay
+    // TODO: iterate through the balls, track the balls that is not on paddle and not on target
+
+
+}
+
+void SpinMode::draw(const glm::uvec2 &drawable_size) {
+    //some nice colors from the course web page:
+    #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
+    const glm::u8vec4 bg_color = HEX_TO_U8VEC4(0x193b59ff);
+    const glm::u8vec4 fg_color = HEX_TO_U8VEC4(0xf2d2b6ff);
+    const glm::u8vec4 shadow_color = HEX_TO_U8VEC4(0xf2ad94ff);
+    const std::vector< glm::u8vec4 > trail_colors = {
+            HEX_TO_U8VEC4(0xf2ad9488),
+            HEX_TO_U8VEC4(0xf2897288),
+            HEX_TO_U8VEC4(0xbacac088),
+    };
+    #undef HEX_TO_U8VEC4
+
+    //other useful drawing constants:
+    const float wall_radius = 0.05f;
+    const float shadow_offset = 0.07f;
+    const float padding = 0.14f; //padding between outside of walls and edge of window
+    //---- compute vertices to draw ----
+
+    //vertices will be accumulated into this list and then uploaded+drawn at the end of this function:
+    std::vector< Vertex > vertices;
+
+    //inline helper function for rectangle drawing:
+    auto draw_rectangle = [&vertices](glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color) {
+        //draw rectangle as two CCW-oriented triangles:
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+        vertices.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+    };
+
+    // draw circles. Reference: https://github.com/ericeschnei/15-466-f20-base0/blob/HEAD/DefendMode.cpp used with adaption
+
+    const int center_num_segments = 48;
+    const int inner_num_segments = 36;
+    const glm::u8vec4 center_color = glm::u8vec4(0x99, 0xCC, 0xFF, 0xff);
+    const glm::u8vec4 inner_color = glm::u8vec4(0x40, 0x40, 0x40, 0xff);
+
+    auto add_triangle_out = [center_color, &vertices](
+            const glm::vec2 &p1, const glm::vec2 &p2
+    ) {
+        // define CCW tri
+        vertices.emplace_back(glm::vec3(p1, 0.0f), center_color, glm::vec2(0.0f, 0.0f));
+        vertices.emplace_back(glm::vec3(p2, 0.0f), center_color, glm::vec2(0.0f, 0.0f));
+        vertices.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), center_color, glm::vec2(0.0f, 0.0f));
+    };
+
+
+    // draw the outer circle
+    glm::vec2 last_pos;
+    for (int i = 0; i <= center_num_segments; i++) {
+        float angle = ((float) i) / center_num_segments * 6.28319f;
+        glm::vec2 pos = glm::vec2(
+                center_radius * glm::cos(angle),
+                center_radius * glm::sin(angle)
+        );
+
+        if (i > 0) {
+            add_triangle_out(last_pos, pos);
+        }
+        last_pos = pos;
+    }
+
+    //draw the inner circle
+    auto add_triangle_in = [inner_color, &vertices](
+            const glm::vec2 &p1, const glm::vec2 &p2
+    ) {
+        // define CCW tri
+        vertices.emplace_back(glm::vec3(p1, 0.0f), inner_color, glm::vec2(0.0f, 0.0f));
+        vertices.emplace_back(glm::vec3(p2, 0.0f), inner_color, glm::vec2(0.0f, 0.0f));
+        vertices.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), inner_color, glm::vec2(0.0f, 0.0f));
+    };
+
+    for (int i = 0; i <= inner_num_segments; i++) {
+        float angle = ((float) i) / inner_num_segments * 6.28319f;
+        glm::vec2 pos = glm::vec2(
+                inner_radius * glm::cos(angle),
+                inner_radius * glm::sin(angle)
+        );
+
+        if (i > 0) {
+            add_triangle_in(last_pos, pos);
+        }
+        last_pos = pos;
+    }
+
+
+    glm::vec2 s = glm::vec2(0.0f,-shadow_offset);
+    //draws the shadow
+    draw_rectangle(glm::vec2(-court_radius.x-wall_radius, 0.0f)+s, glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), shadow_color);
+    draw_rectangle(glm::vec2( court_radius.x+wall_radius, 0.0f)+s, glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), shadow_color);
+    draw_rectangle(glm::vec2( 0.0f,-court_radius.y-wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
+    draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
+//    draw_rectangle(left_paddle+s, paddle_radius, shadow_color);
+//    draw_rectangle(right_paddle+s, paddle_radius, shadow_color);
+//    draw_rectangle(ball+s, ball_radius, shadow_color);
+
+
+    //solid objects:
+
+    //walls:
+    draw_rectangle(glm::vec2(-court_radius.x-wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
+    draw_rectangle(glm::vec2( court_radius.x+wall_radius, 0.0f), glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), fg_color);
+    draw_rectangle(glm::vec2( 0.0f,-court_radius.y-wall_radius), glm::vec2(court_radius.x, wall_radius), fg_color);
+    draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius), glm::vec2(court_radius.x, wall_radius), fg_color);
+
+    //paddles:
+    draw_rectangle(left_paddle, paddle_radius, fg_color);
+    draw_rectangle(right_paddle, paddle_radius, fg_color);
+//    left_paddle.draw(vertices);
+//    right_paddle.draw(vertices);
+
+    //ball:
+//    draw_rectangle(ball, ball_radius, fg_color);
+
+    //force bar, changed by key:
+    glm::vec2 score_radius = glm::vec2(0.1f, 0.1f);
+    for (uint32_t i = 0; i < left_force; ++i) {
+        draw_rectangle(glm::vec2( -court_radius.x + (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
+    }
+    for (uint32_t i = 0; i < left_force; ++i) {
+        draw_rectangle(glm::vec2( court_radius.x - (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
+    }
+
+    //------ compute court-to-window transform ------
+
+    //compute area that should be visible:
+    glm::vec2 scene_min = glm::vec2(
+            -court_radius.x - 2.0f * wall_radius - padding,
+            -court_radius.y - 2.0f * wall_radius - padding
+    );
+    glm::vec2 scene_max = glm::vec2(
+            court_radius.x + 2.0f * wall_radius + padding,
+            court_radius.y + 2.0f * wall_radius + 3.0f * score_radius.y + padding
+    );
+
+    //compute window aspect ratio:
+    float aspect = drawable_size.x / float(drawable_size.y);
+    //we'll scale the x coordinate by 1.0 / aspect to make sure things stay square.
+
+    //compute scale factor for court given that...
+    float scale = std::min(
+            (2.0f * aspect) / (scene_max.x - scene_min.x), //... x must fit in [-aspect,aspect] ...
+            (2.0f) / (scene_max.y - scene_min.y) //... y must fit in [-1,1].
+    );
+
+    glm::vec2 center = 0.5f * (scene_max + scene_min);
+
+    //build matrix that scales and translates appropriately:
+    glm::mat4 court_to_clip = glm::mat4(
+            glm::vec4(scale / aspect, 0.0f, 0.0f, 0.0f),
+            glm::vec4(0.0f, scale, 0.0f, 0.0f),
+            glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+            glm::vec4(-center.x * (scale / aspect), -center.y * scale, 0.0f, 1.0f)
+    );
+    //NOTE: glm matrices are specified in *Column-Major* order,
+    // so each line above is specifying a *column* of the matrix(!)
+
+    //also build the matrix that takes clip coordinates to court coordinates (used for mouse handling):
+    clip_to_court = glm::mat3x2(
+            glm::vec2(aspect / scale, 0.0f),
+            glm::vec2(0.0f, 1.0f / scale),
+            glm::vec2(center.x, center.y)
+    );
+
+    //---- actual drawing ----
+
+    //clear the color buffer:
+    glClearColor(bg_color.r / 255.0f, bg_color.g / 255.0f, bg_color.b / 255.0f, bg_color.a / 255.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    //use alpha blending:
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //don't use the depth test:
+    glDisable(GL_DEPTH_TEST);
+
+    //upload vertices to vertex_buffer:
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer); //set vertex_buffer as current
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_STREAM_DRAW); //upload vertices array
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    //set color_texture_program as current program:
+    glUseProgram(color_texture_program.program);
+
+    //upload OBJECT_TO_CLIP to the proper uniform location:
+    glUniformMatrix4fv(color_texture_program.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(court_to_clip));
+
+    //use the mapping vertex_buffer_for_color_texture_program to fetch vertex data:
+    glBindVertexArray(vertex_buffer_for_color_texture_program);
+
+    //bind the solid white texture to location zero so things will be drawn just with their colors:
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, white_tex);
+
+    //run the OpenGL pipeline:
+    glDrawArrays(GL_TRIANGLES, 0, GLsizei(vertices.size()));
+
+    //unbind the solid white texture:
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //reset vertex array to none:
+    glBindVertexArray(0);
+
+    //reset current program to none:
+    glUseProgram(0);
+
+
+    GL_ERRORS(); //PARANOIA: print errors just in case we did something wrong.
+
+
+}
