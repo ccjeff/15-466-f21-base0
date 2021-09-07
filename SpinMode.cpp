@@ -109,8 +109,8 @@ SpinMode::SpinMode() {
     // the ball should be colliding with the paddle. This is used as a criteria to determine the
     // next ball to be pushed. WARNING: DO NOT CHANGE 0.8
     #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
-    this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xf2ad9488), true));
-    this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xbacac088), false));
+    this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), glm::vec2(0.0f, 0.0f), HEX_TO_U8VEC4(0xf2ad9488), true));
+    this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), glm::vec2(0.0f, 0.0f), HEX_TO_U8VEC4(0xbacac088), false));
     #undef HEX_TO_U8VEC4
 }
 
@@ -138,8 +138,8 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
                 if (moving_left_paddle) left_force = std::min(++left_force, 10);
                 else right_force = std::min(++right_force, 10);
             } else if (evt.key.keysym.sym == SDLK_DOWN) {
-                if (moving_left_paddle) left_force = std::max(--left_force, 0);
-                else right_force = std::max(--right_force, 0);
+                if (moving_left_paddle) left_force = std::max(--left_force, 1);
+                else right_force = std::max(--right_force, 1);
             }
             break;
         case SDL_MOUSEMOTION:
@@ -155,13 +155,12 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
                 std::cout << "right mouse_pos is : " << clip_mouse.x << " & " << clip_mouse.y << "\n";
                 right_paddle->mouse_pos = clip_to_court * glm::vec3(clip_mouse, 1.0f);
             }
-            // todo: return true?
             break;
         case SDL_MOUSEBUTTONDOWN:
             break;
         case SDL_MOUSEBUTTONUP:
             std::cout << "mouse click up \n";
-            // TODO: should push the ball away from paddle with a speed
+            // push the ball away from paddle with a speed
             clip_mouse = glm::vec2(
                     (evt.button.x + 0.5f) / window_size.x * 2.0f - 1.0f,
                     (evt.button.y + 0.5f) / window_size.y *-2.0f + 1.0f
@@ -179,13 +178,15 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
                             std::pow((b->position.y - paddle->position.y), 2));
                     if (distance < 1.0f) {
                         // then it is the init ball. Push the ball far and create a new one
-                        b->speed = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
+                        b->speed.x = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
+                        b->speed.y = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
+                        b->unmoved = false;
                         b->direction = clip_mouse;
                         #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
                         if (moving_left_paddle) {
-                            this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xf2ad9488), true));
+                            this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), glm::vec2(0.0f, 0.0f), HEX_TO_U8VEC4(0xf2ad9488), true));
                         } else {
-                            this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xbacac088), false));
+                            this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), glm::vec2(0.0f, 0.0f), HEX_TO_U8VEC4(0xbacac088), false));
                         }
                         #undef HEX_TO_U8VEC4
                         break;
@@ -220,35 +221,34 @@ void SpinMode::update(float elapsed) {
         // TODO: update cloest ball color
         // ----Collision Handling----
         // court walls:
+        if ((b->position.y > court_radius.y - ball_radius.y) && !b->unmoved) {
+            b->speed.y = -b->speed.y;
+        }
+        if ((b->position.y < -court_radius.y + ball_radius.y) && !b->unmoved) {
+            b->speed.y = -b->speed.y;
+        }
+        if ((b->position.x > court_radius.x - ball_radius.x) && !b->unmoved) {
+            b->speed.x = -b->speed.x;
+        }
+        if ((b->position.x < -court_radius.x + ball_radius.x) && !b->unmoved) {
+            b->speed.x = -b->speed.x;
+        }
+        // collision with other balls:
+        int last_i = -1, last_j = -1;
+        for (int j = 0; j < balls.size(); ++j) {
+            if (b->unmoved || balls[j]->unmoved) break;
+            if (j == i) continue;
+            if (j == last_j && i == last_i) continue;
+            if (std::sqrt(std::pow((b->position.x - balls[j]->position.x),2) + std::pow((b->position.y - balls[j]->position.y),2)) <= 2*ball_radius.x) {
+                balls[j]->speed.x += 0.8* b->speed.x;
+                balls[j]->speed.y += 0.8* b->speed.y;
+                b->speed.x = -b->speed.x;
+                b->speed.y = -b->speed.y;
+                last_i = i;
+                last_j = j;
+            }
+        }
 
-        if ((b->position.y > court_radius.y - ball_radius.y) && b->speed != 0) {
-//            b->position.y = court_radius.y - ball_radius.y;
-            if (b->direction.y > 0.0f) {
-                b->direction.y = -b->direction.y;
-                b->speed -= 0.5f; // collision lost of speed
-            }
-        }
-        if ((b->position.y < -court_radius.y + ball_radius.y) && b->speed != 0) {
-//            b->position.y = -court_radius.y + ball_radius.y;
-            if (b->direction.y < 0.0f) {
-                b->direction.y = -b->direction.y;
-                b->speed -= 0.5f;
-            }
-        }
-        if ((b->position.x > court_radius.x - ball_radius.x) && b->speed != 0) {
-//            b->position.x = court_radius.x - ball_radius.x;
-            if (b->direction.x > 0.0f) {
-                b->direction.x = -b->direction.x;
-                b->speed -= 0.5f;
-            }
-        }
-        if ((b->position.x > -court_radius.x + ball_radius.x) && b->speed != 0) {
-//            b->position.x = -court_radius.x + ball_radius.x;
-            if (b->direction.x < 0.0f) {
-                b->direction.x = -b->direction.x;
-                b->speed -= 0.5f;
-            }
-        }
     }
 }
 
@@ -381,7 +381,6 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
     for (uint32_t i = 0; i < right_force; ++i) {
         draw_rectangle(glm::vec2( court_radius.x - (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
     }
-
     //------ compute court-to-window transform ------
 
     //compute area that should be visible:

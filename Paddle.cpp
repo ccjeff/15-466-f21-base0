@@ -99,57 +99,57 @@ void Paddle::draw(std::vector<Vertex> &vertices) {
     // draw the line from paddle to mouse
 //    // rotate and move paddle into place
 //    glm::mat3x2 paddle_to_clip = this->paddle_to_clip;
+////
+////    // lambda to quickly add a point without repeating myself
+//    auto add_point = [&vertices, this](glm::vec2 const &point, glm::u8vec4 color) {
+//        vertices.emplace_back(
+//                glm::vec3(point, 0.0f),
+//                color,
+////                glm::vec2(0.0f, 0.0f)
+//                this->position
+//        );
+//    };
+////
+//    glm::vec2 radius = this->paddle_radius;   // same as the paddle radius in SpinMode
+//    glm::vec2 top_left = paddle_to_clip * glm::vec3(-radius.x,  radius.y, 1);
+//    glm::vec2 top_rght = paddle_to_clip * glm::vec3( radius.x,  radius.y, 1);
+//    glm::vec2 bot_left = paddle_to_clip * glm::vec3(-radius.x, -radius.y, 1);
+//    glm::vec2 bot_rght = paddle_to_clip * glm::vec3( radius.x, -radius.y, 1);
 //
-//    // lambda to quickly add a point without repeating myself
-    auto add_point = [&vertices, this](glm::vec2 const &point, glm::u8vec4 color) {
-        vertices.emplace_back(
-                glm::vec3(point, 0.0f),
-                color,
-//                glm::vec2(0.0f, 0.0f)
-                this->position
-        );
-    };
+//    // draw paddle as two CCW triangles
+//    // (just like in PongMode.cpp)
+//    add_point(bot_left, color);
+//    add_point(bot_rght, color);
+//    add_point(top_rght, color);
 //
-    glm::vec2 radius = this->paddle_radius;   // same as the paddle radius in SpinMode
-    glm::vec2 top_left = paddle_to_clip * glm::vec3(-radius.x,  radius.y, 1);
-    glm::vec2 top_rght = paddle_to_clip * glm::vec3( radius.x,  radius.y, 1);
-    glm::vec2 bot_left = paddle_to_clip * glm::vec3(-radius.x, -radius.y, 1);
-    glm::vec2 bot_rght = paddle_to_clip * glm::vec3( radius.x, -radius.y, 1);
-
-    // draw paddle as two CCW triangles
-    // (just like in PongMode.cpp)
-    add_point(bot_left, color);
-    add_point(bot_rght, color);
-    add_point(top_rght, color);
-
-    add_point(bot_left, color);
-    add_point(top_rght, color);
-    add_point(top_left, color);
-
-    float line_radius = 0.05f;
-    // draw line from mouse to paddle
-    if (sling_held) {
-        glm::vec2 sling_start = this->position;
-        glm::vec2 sling_end = this->mouse_pos;
-
-        glm::vec2 sling_norm = glm::normalize(sling_end - sling_start);
-        // cc rotate 90deg
-        sling_norm = glm::vec2(-sling_norm.y, sling_norm.x);
-        sling_norm *= line_radius;
-
-        top_left = sling_end + sling_norm;
-        top_rght = sling_end - sling_norm;
-        bot_left = sling_start + sling_norm;
-        bot_rght = sling_start - sling_norm;
-
-        add_point(bot_left, line_color);
-        add_point(bot_rght, line_color);
-        add_point(top_rght, line_color);
-
-        add_point(bot_left, line_color);
-        add_point(top_rght, line_color);
-        add_point(top_left, line_color);
-    }
+//    add_point(bot_left, color);
+//    add_point(top_rght, color);
+//    add_point(top_left, color);
+//
+//    float line_radius = 0.05f;
+//    // draw line from mouse to paddle
+//    if (sling_held) {
+//        glm::vec2 sling_start = this->position;
+//        glm::vec2 sling_end = this->mouse_pos;
+//
+//        glm::vec2 sling_norm = glm::normalize(sling_end - sling_start);
+//        // cc rotate 90deg
+//        sling_norm = glm::vec2(-sling_norm.y, sling_norm.x);
+//        sling_norm *= line_radius;
+//
+//        top_left = sling_end + sling_norm;
+//        top_rght = sling_end - sling_norm;
+//        bot_left = sling_start + sling_norm;
+//        bot_rght = sling_start - sling_norm;
+//
+//        add_point(bot_left, line_color);
+//        add_point(bot_rght, line_color);
+//        add_point(top_rght, line_color);
+//
+//        add_point(bot_left, line_color);
+//        add_point(top_rght, line_color);
+//        add_point(top_left, line_color);
+//    }
 
 }
 

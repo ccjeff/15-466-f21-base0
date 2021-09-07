@@ -5,7 +5,6 @@
 
 #include <cmath>
 #include "Ball.hpp"
-
 #define BALL_NUM_TRIANGLES 24
 
 Ball::~Ball() {};
@@ -41,16 +40,15 @@ void Ball::draw(std::vector<Vertex> &vertices) {
 void Ball::update(float elapsed) {
     if (is_from_left) {
 //        this->position.x += elapsed * this->speed;
-        this->position.x += std::abs(direction.x) * elapsed * this->speed * 3;
+        this->position.x += std::abs(direction.x) * this->speed.x * 0.8;
 //        this->position.y += elapsed * this->speed;
-        this->position.y += direction.y * elapsed * this->speed * 3;
+        this->position.y += direction.y * this->speed.y * 0.8;
     } else {
 //        this->position.x -= elapsed * this->speed;
-        this->position.x -= std::abs(direction.x) * elapsed * this->speed * 3;
+        this->position.x -= (std::abs(direction.x)) * this->speed.x * 0.8;
 //        this->position.y += elapsed * this->speed;
-        this->position.y += direction.y * elapsed * this->speed * 3;
+        this->position.y += (direction.y) * this->speed.y * 0.8;
     }
 
-
-    this->speed *= 0.995; // air fraction
+    this->speed *= 0.975; // air fraction
 }
