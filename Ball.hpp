@@ -13,16 +13,16 @@
 // reference: https://github.com/ericeschnei/15-466-f20-base0/blob/HEAD/Ball.hpp used with edit
 
 struct Ball {
-    Ball(const glm::vec2 &startPos, float initSpeed) : position(std::move(startPos)), speed(initSpeed) {};
+    Ball(const glm::vec2 &startPos, float initSpeed, const glm::u8vec4& color, bool isLeft) : position(std::move(startPos)), speed(initSpeed), color(std::move(color)), is_from_left(isLeft){};
     ~Ball();
     void update(float elapsed);
     void draw(std::vector<Vertex> &vertices);
 
     glm::vec2 position;
+    glm::vec2 direction;
     float speed;
-    #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
-    glm::u8vec4 color = HEX_TO_U8VEC4(0xf2d2b6ff);
-    #undef HEX_TO_U8VEC4
+    glm::u8vec4 color;
+    bool is_from_left;
     const float radius = 0.25f;
 };
 

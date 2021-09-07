@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <random>
+#include <iostream>
 
 SpinMode::SpinMode() {
     //----- allocate OpenGL resources -----
@@ -107,8 +108,10 @@ SpinMode::SpinMode() {
     // Also create the ball objects. At init only two balls
     // the ball should be colliding with the paddle. This is used as a criteria to determine the
     // next ball to be pushed. WARNING: DO NOT CHANGE 0.8
-    this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f));
-    this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f));
+    #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
+    this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xf2ad9488), true));
+    this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xbacac088), false));
+    #undef HEX_TO_U8VEC4
 }
 
 SpinMode::~SpinMode() {
@@ -145,30 +148,52 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
                     (evt.motion.x + 0.5f) / window_size.x * 2.0f - 1.0f,
                     (evt.motion.y + 0.5f) / window_size.y *-2.0f + 1.0f
             );
-//		left_paddle.x = (clip_to_court * glm::vec3(clip_mouse, 1.0f)).x;
             if (moving_left_paddle) {
+                std::cout << "left mouse_pos is : " << clip_mouse.x << " & " << clip_mouse.y << "\n";
                 left_paddle->mouse_pos = clip_to_court * glm::vec3(clip_mouse, 1.0f);
-            } else
+            } else {
+                std::cout << "right mouse_pos is : " << clip_mouse.x << " & " << clip_mouse.y << "\n";
                 right_paddle->mouse_pos = clip_to_court * glm::vec3(clip_mouse, 1.0f);
+            }
             // todo: return true?
             break;
         case SDL_MOUSEBUTTONDOWN:
+            break;
         case SDL_MOUSEBUTTONUP:
+            std::cout << "mouse click up \n";
             // TODO: should push the ball away from paddle with a speed
             clip_mouse = glm::vec2(
                     (evt.button.x + 0.5f) / window_size.x * 2.0f - 1.0f,
                     (evt.button.y + 0.5f) / window_size.y *-2.0f + 1.0f
             );
-
             if (evt.button.button == SDL_BUTTON_LEFT) {
+                std::cout << "mouse click left \n";
                 auto paddle = moving_left_paddle ? left_paddle : right_paddle;
                 paddle->handle_click(
                         (clip_to_court * glm::vec3(clip_mouse, 1.0f)),
-                        evt.type == SDL_MOUSEBUTTONDOWN
+                        true
                 );
+                for (int i = 0; i < this->balls.size(); ++i) {
+                    Ball *b = balls[i];
+                    float distance = std::sqrt(std::pow((b->position.x - paddle->position.x), 2) +
+                            std::pow((b->position.y - paddle->position.y), 2));
+                    if (distance < 1.0f) {
+                        // then it is the init ball. Push the ball far and create a new one
+                        b->speed = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
+                        b->direction = clip_mouse;
+                        #define HEX_TO_U8VEC4( HX ) (glm::u8vec4( (HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX) & 0xff ))
+                        if (moving_left_paddle) {
+                            this->balls.emplace_back(new Ball(glm::vec2(-court_radius.x + 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xf2ad9488), true));
+                        } else {
+                            this->balls.emplace_back(new Ball(glm::vec2(court_radius.x - 0.8f, 0.0f), 0.0f, HEX_TO_U8VEC4(0xbacac088), false));
+                        }
+                        #undef HEX_TO_U8VEC4
+                        break;
+                    }
+                }
+                moving_left_paddle = !moving_left_paddle;
                 return true;
             }
-
             break;
     }
     return false;
@@ -182,22 +207,49 @@ void SpinMode::update(float elapsed) {
     int closest_ball_idx = 0;
     float closest_distance = 0.0f;
     // calculate score, do minor change to the color of the closest ball
-
+//    std::cout << "to update balls \n";
+    // -----balls update-----
     for (int i = 0; i < balls.size(); ++i) {
-        Ball* b = balls[i];
+        Ball *b = balls[i];
         b->update(elapsed);
         float distance = std::sqrt(std::pow(b->position.x, 2) + std::pow(b->position.y, 2));
         if (closest_distance > distance) {
             closest_ball_idx = i;
             closest_ball_idx = distance;
         }
+        // TODO: update cloest ball color
+        // ----Collision Handling----
+        // court walls:
+
+        if ((b->position.y > court_radius.y - ball_radius.y) && b->speed != 0) {
+//            b->position.y = court_radius.y - ball_radius.y;
+            if (b->direction.y > 0.0f) {
+                b->direction.y = -b->direction.y;
+                b->speed -= 0.5f; // collision lost of speed
+            }
+        }
+        if ((b->position.y < -court_radius.y + ball_radius.y) && b->speed != 0) {
+//            b->position.y = -court_radius.y + ball_radius.y;
+            if (b->direction.y < 0.0f) {
+                b->direction.y = -b->direction.y;
+                b->speed -= 0.5f;
+            }
+        }
+        if ((b->position.x > court_radius.x - ball_radius.x) && b->speed != 0) {
+//            b->position.x = court_radius.x - ball_radius.x;
+            if (b->direction.x > 0.0f) {
+                b->direction.x = -b->direction.x;
+                b->speed -= 0.5f;
+            }
+        }
+        if ((b->position.x > -court_radius.x + ball_radius.x) && b->speed != 0) {
+//            b->position.x = -court_radius.x + ball_radius.x;
+            if (b->direction.x < 0.0f) {
+                b->direction.x = -b->direction.x;
+                b->speed -= 0.5f;
+            }
+        }
     }
-
-    // TODO: update cloest ball color
-
-
-
-
 }
 
 void SpinMode::draw(const glm::uvec2 &drawable_size) {

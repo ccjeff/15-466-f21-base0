@@ -3,6 +3,7 @@
 // reference: https://github.com/ericeschnei/15-466-f20-base0/blob/HEAD/Ball.cpp used with edit
 //
 
+#include <cmath>
 #include "Ball.hpp"
 
 #define BALL_NUM_TRIANGLES 24
@@ -38,5 +39,18 @@ void Ball::draw(std::vector<Vertex> &vertices) {
 }
 
 void Ball::update(float elapsed) {
-    this->position -= elapsed * this->speed * glm::normalize(this->position);
+    if (is_from_left) {
+//        this->position.x += elapsed * this->speed;
+        this->position.x += std::abs(direction.x) * elapsed * this->speed * 3;
+//        this->position.y += elapsed * this->speed;
+        this->position.y += direction.y * elapsed * this->speed * 3;
+    } else {
+//        this->position.x -= elapsed * this->speed;
+        this->position.x -= std::abs(direction.x) * elapsed * this->speed * 3;
+//        this->position.y += elapsed * this->speed;
+        this->position.y += direction.y * elapsed * this->speed * 3;
+    }
+
+
+    this->speed *= 0.995; // air fraction
 }

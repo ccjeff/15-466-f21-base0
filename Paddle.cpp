@@ -5,6 +5,7 @@
 // referenced from : https://github.com/ericeschnei/15-466-f20-base0/blob/HEAD/Paddle.cpp
 // used with modification
 
+#include <iostream>
 #include "Paddle.hpp"
 
 Paddle::Paddle() {}
@@ -36,8 +37,10 @@ void Paddle::handle_click(glm::vec2 pos, bool down) {
     // give the ball on paddle a init speed w.r.t force & set angle
     // double press, no release--
     // just pretend the last press didn't exist
+    std::cout << "handle click in paddle \n";
     glm::vec2 pos_paddle = this->clip_to_paddle * glm::vec3(pos, 1);
     if (down) {
+        std::cout << "handle click in paddle 2 \n";
         // transform mouse coords to paddle space
         if (glm::abs(pos_paddle.x) < this->paddle_radius.x &&
             glm::abs(pos_paddle.y) < this->paddle_radius.y) {
@@ -93,19 +96,21 @@ void Paddle::draw(std::vector<Vertex> &vertices) {
 
     draw_rectangle(this->position , paddle_radius, fg_color);
 
-    // rotate and move paddle into place
-    glm::mat3x2 paddle_to_clip = this->paddle_to_clip;
-
-    // lambda to quickly add a point without repeating myself
-    auto add_point = [&vertices](glm::vec2 const &point, glm::u8vec4 color) {
+    // draw the line from paddle to mouse
+//    // rotate and move paddle into place
+//    glm::mat3x2 paddle_to_clip = this->paddle_to_clip;
+//
+//    // lambda to quickly add a point without repeating myself
+    auto add_point = [&vertices, this](glm::vec2 const &point, glm::u8vec4 color) {
         vertices.emplace_back(
                 glm::vec3(point, 0.0f),
                 color,
-                glm::vec2(0.0f, 0.0f)
+//                glm::vec2(0.0f, 0.0f)
+                this->position
         );
     };
-
-    glm::vec2 radius = this->paddle_radius;
+//
+    glm::vec2 radius = this->paddle_radius;   // same as the paddle radius in SpinMode
     glm::vec2 top_left = paddle_to_clip * glm::vec3(-radius.x,  radius.y, 1);
     glm::vec2 top_rght = paddle_to_clip * glm::vec3( radius.x,  radius.y, 1);
     glm::vec2 bot_left = paddle_to_clip * glm::vec3(-radius.x, -radius.y, 1);
@@ -124,7 +129,7 @@ void Paddle::draw(std::vector<Vertex> &vertices) {
     float line_radius = 0.05f;
     // draw line from mouse to paddle
     if (sling_held) {
-        glm::vec2 sling_start = paddle_to_clip * glm::vec3(this->sling_start, 1);
+        glm::vec2 sling_start = this->position;
         glm::vec2 sling_end = this->mouse_pos;
 
         glm::vec2 sling_norm = glm::normalize(sling_end - sling_start);
@@ -145,6 +150,7 @@ void Paddle::draw(std::vector<Vertex> &vertices) {
         add_point(top_rght, line_color);
         add_point(top_left, line_color);
     }
+
 }
 
 void Paddle::update(float elapsed) {
