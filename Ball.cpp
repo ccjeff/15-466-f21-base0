@@ -40,14 +40,14 @@ void Ball::draw(std::vector<Vertex> &vertices) {
 void Ball::update(float elapsed) {
     if (is_from_left) {
 //        this->position.x += elapsed * this->speed;
-        this->position.x += std::abs(direction.x) * this->speed.x * 0.8;
+        this->position.x += (0.3+std::abs(direction.x)) * this->speed.x * 0.4;
 //        this->position.y += elapsed * this->speed;
-        this->position.y += direction.y * this->speed.y * 0.8;
+        this->position.y += direction.y * this->speed.y * 0.4;
     } else {
 //        this->position.x -= elapsed * this->speed;
-        this->position.x -= (std::abs(direction.x)) * this->speed.x * 0.8;
+        this->position.x -= (0.3+std::abs(direction.x)) * this->speed.x * 0.4;
 //        this->position.y += elapsed * this->speed;
-        this->position.y += (direction.y) * this->speed.y * 0.8;
+        this->position.y += (direction.y) * this->speed.y * 0.4;
     }
 
     this->speed *= 0.975; // air fraction

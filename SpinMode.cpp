@@ -168,15 +168,11 @@ bool SpinMode::handle_event(const SDL_Event &evt, const glm::uvec2 &window_size)
             if (evt.button.button == SDL_BUTTON_LEFT) {
                 std::cout << "mouse click left \n";
                 auto paddle = moving_left_paddle ? left_paddle : right_paddle;
-                paddle->handle_click(
-                        (clip_to_court * glm::vec3(clip_mouse, 1.0f)),
-                        true
-                );
                 for (int i = 0; i < this->balls.size(); ++i) {
                     Ball *b = balls[i];
                     float distance = std::sqrt(std::pow((b->position.x - paddle->position.x), 2) +
                             std::pow((b->position.y - paddle->position.y), 2));
-                    if (distance < 1.0f) {
+                    if (distance < 0.8f) {
                         // then it is the init ball. Push the ball far and create a new one
                         b->speed.x = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
                         b->speed.y = moving_left_paddle ? left_force * 0.2 : right_force * 0.2;
@@ -206,19 +202,25 @@ void SpinMode::update(float elapsed) {
      * Game update logic: search for ball with non-zero velocity. Move the ball
      * */
     int closest_ball_idx = 0;
-    float closest_distance = 0.0f;
+    float closest_distance = 999.0f;
     // calculate score, do minor change to the color of the closest ball
 //    std::cout << "to update balls \n";
     // -----balls update-----
     for (int i = 0; i < balls.size(); ++i) {
         Ball *b = balls[i];
         b->update(elapsed);
-        float distance = std::sqrt(std::pow(b->position.x, 2) + std::pow(b->position.y, 2));
-        if (closest_distance > distance) {
-            closest_ball_idx = i;
-            closest_ball_idx = distance;
+        // update the smallest distance information
+        if (!b->unmoved) {
+            float distance = std::sqrt(std::pow(b->position.x - court_radius.x/2, 2) + std::pow(b->position.y - court_radius.y/2, 2));
+            closest_distance = std::min(closest_distance, distance);
+            if (closest_distance == distance) closest_ball_idx = i;
+//            std::cout << "closest idx" << closest_ball_idx << "\n";
+            if (balls[closest_ball_idx]->is_from_left) {
+                left_win = true;
+            } else {
+                right_win = true;
+            }
         }
-        // TODO: update cloest ball color
         // ----Collision Handling----
         // court walls:
         if ((b->position.y > court_radius.y - ball_radius.y) && !b->unmoved) {
@@ -240,8 +242,8 @@ void SpinMode::update(float elapsed) {
             if (j == i) continue;
             if (j == last_j && i == last_i) continue;
             if (std::sqrt(std::pow((b->position.x - balls[j]->position.x),2) + std::pow((b->position.y - balls[j]->position.y),2)) <= 2*ball_radius.x) {
-                balls[j]->speed.x += 0.8* b->speed.x;
-                balls[j]->speed.y += 0.8* b->speed.y;
+                balls[j]->speed.x += 0.3* b->speed.x;
+                balls[j]->speed.y += 0.3* b->speed.y;
                 b->speed.x = -b->speed.x;
                 b->speed.y = -b->speed.y;
                 last_i = i;
@@ -263,7 +265,6 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
             HEX_TO_U8VEC4(0xf2897288),
             HEX_TO_U8VEC4(0xbacac088),
     };
-    #undef HEX_TO_U8VEC4
 
     //other useful drawing constants:
     const float wall_radius = 0.05f;
@@ -347,10 +348,6 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
     draw_rectangle(glm::vec2( court_radius.x+wall_radius, 0.0f)+s, glm::vec2(wall_radius, court_radius.y + 2.0f * wall_radius), shadow_color);
     draw_rectangle(glm::vec2( 0.0f,-court_radius.y-wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
     draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius)+s, glm::vec2(court_radius.x, wall_radius), shadow_color);
-//    draw_rectangle(left_paddle+s, paddle_radius, shadow_color);
-//    draw_rectangle(right_paddle+s, paddle_radius, shadow_color);
-//    draw_rectangle(ball+s, ball_radius, shadow_color);
-
 
     //solid objects:
 
@@ -361,8 +358,6 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
     draw_rectangle(glm::vec2( 0.0f, court_radius.y+wall_radius), glm::vec2(court_radius.x, wall_radius), fg_color);
 
     //paddles:
-//    draw_rectangle(left_paddle, paddle_radius, fg_color);
-//    draw_rectangle(right_paddle, paddle_radius, fg_color);
     left_paddle->draw(vertices);
     right_paddle->draw(vertices);
 
@@ -381,6 +376,14 @@ void SpinMode::draw(const glm::uvec2 &drawable_size) {
     for (uint32_t i = 0; i < right_force; ++i) {
         draw_rectangle(glm::vec2( court_radius.x - (2.0f + 3.0f * i) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, fg_color);
     }
+
+    if (left_win) {
+        draw_rectangle(glm::vec2( -court_radius.x + (2.0f + 3.0f * 12) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, HEX_TO_U8VEC4(0xf2897288));
+    } else {
+        draw_rectangle(glm::vec2( court_radius.x - (2.0f + 3.0f * 12) * score_radius.x, court_radius.y + 2.0f * wall_radius + 2.0f * score_radius.y), score_radius, HEX_TO_U8VEC4(0xf2897288));
+    }
+    #undef HEX_TO_U8VEC4
+
     //------ compute court-to-window transform ------
 
     //compute area that should be visible:

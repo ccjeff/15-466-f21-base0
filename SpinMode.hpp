@@ -37,14 +37,12 @@ struct SpinMode : Mode {
 
     float center_radius = 1.0f;
     float inner_radius = 0.75f;
-//    float rotateSpeed = 1.0f;
-//    const float speedIncrement = 0.02f; // amount to increase speed over time
 
     int left_force = 5;
     int right_force = 5;
 
-//    float ai_offset = 0.0f;
-//    float ai_offset_update = 0.0f;
+    bool left_win = false;
+    bool right_win = false;
 
     std::vector<Ball *> balls; // init will be 2 balls on the paddles
     bool moving_left_paddle = true;
